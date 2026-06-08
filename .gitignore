@@ -1,0 +1,50 @@
+### JetBrains (PyCharm) 专属配置 ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+### Python 编译缓存与运行临时文件 ###
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+### Python 虚拟环境 (非常重要，绝对不要传到 GitHub) ###
+venv/
+.venv/
+ENV/
+env/
+ENV2/
+ENV3/
+
+### 日志与数据缓存 ###
+*.log
+.pytest_cache/
+.tox/
+.coverage
+.cache/
+htmlcov/
+
+### 环境变量与本地密钥（防止隐私泄露） ###
+.env
+.secret
