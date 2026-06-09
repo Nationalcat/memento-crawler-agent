@@ -782,6 +782,32 @@ async function runCrawler() {
 重試次數: 0
 ```
 
+## 單元測試與覆蓋率
+
+本專案使用 `pytest` 進行單元測試，並使用 `pytest-cov` 分析測試覆蓋率。測試範疇涵蓋了專案中實作的四大設計模式（策略模式、觀察者模式、工廠模式、模板方法模式）、會話管理器、LangGraph 工作流引擎（與節點）、社區技能執行器、以及瀏覽器、LLM 和提示詞載入工具。
+
+目前專案中所有核心模組（包含 `skills`、`observers`、`agents`、`api`、`graph`、`utils`）已達到 **100% 語句覆蓋率 (Statement Coverage)**。
+
+### 1. 執行單元測試
+
+執行全部的單元測試：
+```bash
+# 啟動虛擬環境
+source path/to/venv/bin/activate
+
+# 執行測試（需要設定 PYTHONPATH=. 以便正確載入模組）
+PYTHONPATH=. pytest -v
+```
+
+### 2. 檢視測試覆蓋率
+
+產生全專案核心模組的覆蓋率報告：
+```bash
+PYTHONPATH=. pytest --cov=skills --cov=observers --cov=agents --cov=api --cov=graph --cov=utils --cov-report=term-missing
+```
+
+---
+
 ## 技術堆疊
 
 - **LangGraph**: 工作流引擎
