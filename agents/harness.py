@@ -209,7 +209,8 @@ class Harness(BaseAgent):
                 original_strategy=state.get('original_strategy', {}),
                 error_message=error_message,
                 retry_count=state['retry_count'],
-                max_retry=settings.MAX_RETRY_COUNT
+                max_retry=settings.MAX_RETRY_COUNT,
+                state=state
             )
 
             # 確保策略包含必要字段
@@ -275,7 +276,8 @@ class Harness(BaseAgent):
                             new_extractors.append(Extractor(
                                 name=field.get('name', ''),
                                 selector=field.get('selector', ''),
-                                type=field.get('type', 'text')
+                                type=field.get('type', 'text'),
+                                multiple=field.get('multiple', True)
                             ))
                         skill.extractors = new_extractors
 

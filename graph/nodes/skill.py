@@ -17,6 +17,7 @@ async def retrieve_skill(state: AgentState) -> AgentState:
     回傳:
         更新後的 Agent 狀態
     """
+    state['current_step'] = 3
     harness = AgentFactory.create(AgentType.HARNESS, "harness_main")
     return await harness.retrieve_skill(state)
 
@@ -39,5 +40,6 @@ async def update_skill(state: AgentState) -> AgentState:
     回傳:
         更新後的 Agent 狀態
     """
+    state['current_step'] = 8
     harness = AgentFactory.create(AgentType.HARNESS, "harness_main")
     return await harness.update_skill_library(state)

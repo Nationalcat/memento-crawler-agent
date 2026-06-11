@@ -55,12 +55,31 @@ class Subject:
 
     def notify(self, state: AgentState) -> None:
         """
-        通知所有觀察者
+        通知所有觀察者（自動支援同步與非同步更新方法）
         參數:
             state: 當前 Agent 狀態
         """
+        import asyncio
+        import inspect
+
         for observer in self._observers:
-            observer.update(state)
+            # 檢查 update 方法是否為非同步函式 (async def)
+            if inspect.iscoroutinefunction(observer.update):
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(observer.update(state))
+                except RuntimeError:
+                    # 如果沒有執行中的 loop，則在新的 loop 中執行
+                    asyncio.run(observer.update(state))
+            else:
+                res = observer.update(state)
+                # 檢查呼叫後是否回傳協程 (Coroutine) 物件
+                if inspect.iscoroutine(res):
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(res)
+                    except RuntimeError:
+                        asyncio.run(res)
 
 
 class ConsoleLogger(Observer):
@@ -69,10 +88,38 @@ class ConsoleLogger(Observer):
     將任務狀態變更輸出到控制台，用於即時監控
     """
 
+    def __init__(self):
+        self._printed_prompts = {}
+        self._printed_errors = {}
+
     def update(self, state: AgentState) -> None:
         """輸出格式化的狀態日誌到控制台"""
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{timestamp}] 任務 {state['task_id']}: {state['status']} - 步驟 {state['current_step']}/{state['total_steps']}")
+
+        task_id = state['task_id']
+
+        # 輸出新產生的錯誤
+        error_log = state.get('error_log', [])
+        printed_errors_count = self._printed_errors.get(task_id, 0)
+        if len(error_log) > printed_errors_count:
+            for i in range(printed_errors_count, len(error_log)):
+                print(f"[{timestamp}] [錯誤] 任務 {task_id}: {error_log[i]}")
+            self._printed_errors[task_id] = len(error_log)
+
+        # 輸出新產生的提示詞
+        prompts = state.get('prompts', [])
+        printed_count = self._printed_prompts.get(task_id, 0)
+
+        if len(prompts) > printed_count:
+            for i in range(printed_count, len(prompts)):
+                p = prompts[i]
+                print(f"\n[{timestamp}] === LLM 提示詞 ({p['type']}) ===")
+                print(f"--- System Prompt --- \n{p['system']}")
+                print(f"--- User Prompt --- \n{p['user']}")
+                print(f"--- Response --- \n{p['response']}")
+                print(f"=====================================\n")
+            self._printed_prompts[task_id] = len(prompts)
 
 
 class ErrorAlert(Observer):
@@ -97,15 +144,31 @@ class ErrorAlert(Observer):
 
 class TaskMonitor(Subject):
     """
-    任務監控器
+    任務監控器（單例模式）
     繼承 Subject 類別，提供任務狀態追蹤與歷史記錄功能
     是觀察者模式的核心管理類別
     """
+    _instance: Optional['TaskMonitor'] = None
+
+    def __new__(cls):
+        """單例模式實作"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance._initialized_monitor = False
+        return cls._instance
 
     def __init__(self):
         """初始化任務歷史記錄"""
+        if getattr(self, '_initialized_monitor', False):
+            return
         super().__init__()
         self.task_history: Dict[str, List[AgentState]] = {}  # 任務 ID -> 狀態歷史
+        self._initialized_monitor = True
+
+    @classmethod
+    def reset_singleton(cls) -> None:
+        """重置單例（主要用於單元測試）"""
+        cls._instance = None
 
     def update_state(self, state: AgentState) -> None:
         """

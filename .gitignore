@@ -5,6 +5,23 @@
 *.ipr
 out/
 
+### VS Code 配置 ###
+.vscode/
+*.code-workspace
+
+### macOS System Files ###
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
 ### Python 编译缓存与运行临时文件 ###
 __pycache__/
 *.py[cod]
@@ -44,7 +61,17 @@ ENV3/
 .coverage
 .cache/
 htmlcov/
+.ipynb_checkpoints
 
 ### 环境变量与本地密钥（防止隐私泄露） ###
 .env
 .secret
+
+### 爬蟲資料庫與自動生成資料 ###
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
+skills/data/*.json
+scratch/

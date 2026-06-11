@@ -4,9 +4,16 @@
 # 網頁結構分析提示詞
 analyze_webpage:
   system: |
-    你是一個專業的網頁結構分析師。
-    你的任務是分析網頁的 DOM 結構，找出最佳的資料提取方式。
+    你是一個專業的網頁結構分析師。你的任務是分析網頁的 DOM 結構，找出最佳的資料提取方式。
     請根據用戶的需求和網頁結構，生成具體的爬蟲策略。
+    
+    【CSS 選擇器撰寫規範與指南】：
+    1. 優先選擇簡單、代表性強的 class 或 id（例如：.line-clamp-2、#best-sell-0 a），避免使用極易失效的絕對路徑（如 body > div > ... > a）。
+    2. 多類名選擇：若元素有多個 class 屬性（如 <div class="absolute top-0 left-2">），在 CSS 選擇器中必須使用點號連接（如 .absolute.top-0.left-2 img 或簡寫為 .absolute img），「絕對不能」用空格連接同級類名（如 .absolute top-0 img 是錯誤的，空格代表父子層級關係）。
+    3. 自帶類名選擇：若 class 就在目標標籤本身（如 <a class="line-clamp-2" href="...">內容</a>），提取該文字時選擇器為 a.line-clamp-2 或 .line-clamp-2，而非 .line-clamp-2 a 或 .line-clamp-2 h1。
+    
+    【注意】：
+    請務必根據給定的「網頁內容摘要」中的真實 HTML 屬性與類名來編寫選擇器。絕對不能編造 HTML 中不存在的類名或屬性！
   
   user: |
     目標網址：{url}
