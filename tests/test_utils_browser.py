@@ -14,8 +14,17 @@ async def test_browser_lifecycle_and_navigation():
         
     # 2. After initialization, navigate should return mock html content
     await bm.initialize()
-    html = await bm.navigate("http://example.com")
-    assert "來自 http://example.com 的模擬內容" in html
+    
+    mock_client = MagicMock()
+    mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+    mock_client.__aexit__ = AsyncMock(return_value=None)
+    mock_response = MagicMock()
+    mock_response.text = "來自 http://example.com 的模擬內容"
+    mock_client.get = AsyncMock(return_value=mock_response)
+    
+    with patch("httpx.AsyncClient", return_value=mock_client):
+        html = await bm.navigate("http://example.com")
+        assert "來自 http://example.com 的模擬內容" in html
     
     # 3. click and scroll behavior
     assert await bm.click(".btn") is True

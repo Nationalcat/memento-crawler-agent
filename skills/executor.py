@@ -170,7 +170,9 @@ class CommunitySkillExecutor:
             提取的資料列表
         """
         # 檢查是否含有嵌套提取器 (hierarchical structure)
-        has_children = any(getattr(ext, 'children', None) for ext in self.skill.extractors)
+        has_children = any(getattr(ext, 'children', None) for ext in self.skill.extractors) or (
+            any(ext.multiple for ext in self.skill.extractors) and any(not ext.multiple for ext in self.skill.extractors)
+        )
 
         if not has_children:
             # 扁平結構：使用 zip 方式並行提取所有欄位的值 (與 _extract_with_strategy 邏輯一致)

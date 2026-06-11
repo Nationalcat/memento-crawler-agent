@@ -43,8 +43,15 @@ def mock_executor_dependencies():
          # Setup mock browser
          mock_browser = MagicMock()
          mock_browser.initialize = AsyncMock()
-         mock_browser.navigate = AsyncMock(return_value="<html>content</html>")
-         mock_browser.get_content = AsyncMock(return_value="<html>content</html>")
+         html_content = """
+         <html>
+           <h1>模擬_title_資料</h1>
+           <p>模擬_content_資料</p>
+           <div class="price">模擬_price_資料</div>
+         </html>
+         """
+         mock_browser.navigate = AsyncMock(return_value=html_content)
+         mock_browser.get_content = AsyncMock(return_value=html_content)
          mock_browser.click = AsyncMock(return_value=True)
          mock_browser.scroll = AsyncMock()
          mock_browser.close = AsyncMock()
@@ -149,7 +156,7 @@ async def test_execute_with_skill_auto_json(mock_executor_dependencies):
     agent = ExecutorAgent("exec-1", AgentType.EXECUTOR)
     skill_dict = {
         "id": "json-skill",
-        "selectors": {"title": "h1"}
+        "selectors": {"selector_based": "h1"}
     }
     
     state = create_executor_state(source="skill", skill_obj=skill_dict)
@@ -187,7 +194,7 @@ async def test_execute_auto_success_llm(mock_executor_dependencies):
         assert res["status"] == TaskStatus.COMPLETED
         assert res["current_strategy"]["fields"] == []
         assert res["current_strategy"]["actions"] == ["scroll"]
-        assert res["extracted_data"] == [{}] # 提取空 dict
+        assert res["extracted_data"] == [] # 提取空 dict
         
         # 2. 模擬策略返回 (完整 fields 與 actions)
         mock_llm.return_value = {

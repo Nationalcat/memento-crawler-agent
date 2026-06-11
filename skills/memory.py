@@ -48,6 +48,7 @@ class SkillMemory:
     def _load_all_skills(self):
         """載入所有技能"""
         self._load_auto_skills()
+        self._load_community_skills()
         self._load_db_skills()
 
     def _load_db_skills(self):
@@ -142,6 +143,7 @@ class SkillMemory:
         """
         self._community_skills[skill.id] = skill
         self._save_skill_to_db(skill)
+        self._save_community_skill(skill)
 
     def _save_skill_to_db(self, skill: CommunitySkill):
         """將技能儲存至 SQLite 資料庫"""
@@ -258,6 +260,7 @@ class SkillMemory:
 
             self._community_skills[skill.id] = skill
             self._save_skill_to_db(skill)
+            self._save_community_skill(skill)
 
     def update_auto_skill(self, skill_data: Dict) -> None:
         """
