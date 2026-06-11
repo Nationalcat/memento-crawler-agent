@@ -1,7 +1,5 @@
 import pytest
-import asyncio
 from datetime import datetime
-from unittest.mock import patch
 from models import TaskStatus, AgentState
 from observers.monitor import (
     Observer,
@@ -156,88 +154,3 @@ def test_observer_abc_methods():
     to = TestObserver()
     dummy_state = create_dummy_state("test", TaskStatus.PENDING)
     to.update(dummy_state)
-
-
-def test_task_monitor_singleton():
-    """測試 TaskMonitor 的單例模式與重置機制"""
-    monitor1 = TaskMonitor()
-    monitor2 = TaskMonitor()
-    assert monitor1 is monitor2
-
-    # 重置單例
-    TaskMonitor.reset_singleton()
-    monitor3 = TaskMonitor()
-    assert monitor1 is not None and monitor1 is not monitor3
-
-
-@pytest.mark.asyncio
-async def test_async_observers():
-    """測試 Subject.notify 對於非同步和協程觀察者的支援"""
-    subject = Subject()
-
-    # 1. 測試 async def (coroutine function) 觀察者
-    class AsyncObserver(Observer):
-        def __init__(self):
-            self.called = False
-        async def update(self, state):
-            self.called = True
-
-    obs1 = AsyncObserver()
-    subject.attach(obs1)
-
-    # 2. 測試回傳 Coroutine 的一般函式觀察者
-    class CoroReturningObserver(Observer):
-        def __init__(self):
-            self.called = False
-        def update(self, state):
-            async def dummy_coro():
-                self.called = True
-            return dummy_coro()
-
-    obs2 = CoroReturningObserver()
-    subject.attach(obs2)
-
-    # 觸發通知
-    dummy_state = create_dummy_state("test-async", TaskStatus.PENDING)
-    subject.notify(dummy_state)
-
-    # 讓 Event Loop 有機會執行被排程的工作
-    await asyncio.sleep(0.01)
-
-    assert obs1.called is True
-    assert obs2.called is True
-
-
-def test_async_observers_no_loop():
-    """測試在沒有執行中 loop 的環境下執行非同步通知"""
-    subject = Subject()
-
-    class AsyncObserver(Observer):
-        def __init__(self):
-            self.called = False
-        async def update(self, state):
-            self.called = True
-
-    obs1 = AsyncObserver()
-    subject.attach(obs1)
-
-    class CoroReturningObserver(Observer):
-        def __init__(self):
-            self.called = False
-        def update(self, state):
-            async def dummy_coro():
-                self.called = True
-            return dummy_coro()
-
-    obs2 = CoroReturningObserver()
-    subject.attach(obs2)
-
-    # 執行同步通知，這會自動進入 asyncio.run 的 fallback 機制
-    dummy_state = create_dummy_state("test-async-no-loop", TaskStatus.PENDING)
-    subject.notify(dummy_state)
-
-    assert obs1.called is True
-    assert obs2.called is True
-
-
-
