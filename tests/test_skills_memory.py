@@ -7,13 +7,21 @@ from unittest.mock import patch, mock_open
 from skills.models import CommunitySkill, TargetConfig, Parameter
 from skills.memory import SkillMemory
 
+from config import settings
+# Override database URL to use in-memory SQLite for testing
+settings.DATABASE_URL = "sqlite:///:memory:"
+
+from database.connection import Base, engine, SessionLocal
+
 @pytest.fixture(autouse=True)
 def setup_memory(tmp_path):
-    """每個測試執行前，重置 SkillMemory 單例，並使用獨立的臨時資料夾"""
+    """每個測試執行前，重置 SkillMemory 單例，並使用獨立的臨時資料夾與記憶體資料庫"""
+    Base.metadata.create_all(bind=engine)
     SkillMemory.reset()
     SkillMemory._community_dir = tmp_path / "community"
     SkillMemory._auto_dir = tmp_path / "data"
     yield
+    Base.metadata.drop_all(bind=engine)
     SkillMemory.reset()
 
 def test_singleton_pattern():

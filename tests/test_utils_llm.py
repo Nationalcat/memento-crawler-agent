@@ -15,15 +15,16 @@ def test_init_llm_branches():
     manager = LLMManager()
     
     # 1. API key is empty/None
-    with patch.object(settings, "LLM_API_KEY", None):
-        manager._init_llm()
-        assert manager._llm is None
-        
-    # 2. API key is set
-    with patch.object(settings, "LLM_API_KEY", "mock-key"):
-        with patch.object(settings, "LLM_MODEL", "gpt-4o"):
+    with patch.object(settings, "LLM_PROVIDER", "openai"):
+        with patch.object(settings, "LLM_API_KEY", None):
             manager._init_llm()
-            assert manager._llm is not None
+            assert manager._llm is None
+            
+        # 2. API key is set
+        with patch.object(settings, "LLM_API_KEY", "mock-key"):
+            with patch.object(settings, "LLM_MODEL", "gpt-4o"):
+                manager._init_llm()
+                assert manager._llm is not None
 
 
 @pytest.mark.asyncio
