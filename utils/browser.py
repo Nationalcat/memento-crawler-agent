@@ -18,6 +18,7 @@ class BrowserManager:
     def __init__(self):
         """初始化瀏覽器管理器"""
         self._initialized = False  # 初始化狀態標記
+        self._current_content = "" # 當前網頁內容
 
     async def initialize(self) -> None:
         """
@@ -25,10 +26,11 @@ class BrowserManager:
         建立無頭瀏覽器連線
         """
         self._initialized = True
+        self._current_content = ""
 
     async def navigate(self, url: str) -> str:
         """
-        導航至指定網址
+        導航至指定網址（抓取真實網頁內容）
         參數:
             url: 目標網址
         回傳:
@@ -38,8 +40,32 @@ class BrowserManager:
         """
         if not self._initialized:
             raise RuntimeError("瀏覽器尚未初始化")
-        # 示範：返回模擬的頁面內容
-        return f"<html>來自 {url} 的模擬內容</html>"
+        
+        url = BrowserManager.normalize_url(url)
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=15.0, follow_redirects=True, headers=headers) as client:
+                response = await client.get(url)
+                self._current_content = response.text
+                return self._current_content
+        except Exception as e:
+            self._current_content = f"<html>錯誤: {str(e)}</html>"
+            raise RuntimeError(f"網頁導航失敗: {str(e)}")
+
+    async def get_content(self) -> str:
+        """
+        獲取當前頁面內容
+        回傳:
+            網頁原始 HTML 內容
+        例外:
+            RuntimeError: 若瀏覽器未初始化
+        """
+        if not self._initialized:
+            raise RuntimeError("瀏覽器尚未初始化")
+        return self._current_content
 
     async def click(self, selector: str) -> bool:
         """

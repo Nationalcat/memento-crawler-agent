@@ -169,6 +169,39 @@ class CommunitySkillExecutor:
         回傳:
             提取的資料列表
         """
+        # 檢查是否含有嵌套提取器 (hierarchical structure)
+        has_children = any(getattr(ext, 'children', None) for ext in self.skill.extractors)
+
+        if not has_children:
+            # 扁平結構：使用 zip 方式並行提取所有欄位的值 (與 _extract_with_strategy 邏輯一致)
+            results = []
+            extracted_fields = {}
+            max_len = 0
+            for extractor in self.skill.extractors:
+                if not extractor.selector:
+                    continue
+                elements = soup.select(extractor.selector)
+                values = []
+                for el in elements:
+                    value = self._extract_element_value(el, extractor)
+                    if value is not None:
+                        values.append(value)
+                extracted_fields[extractor.name] = values
+                max_len = max(max_len, len(values))
+
+            if max_len > 0:
+                for i in range(max_len):
+                    item = {}
+                    for extractor in self.skill.extractors:
+                        values = extracted_fields.get(extractor.name, [])
+                        if i < len(values):
+                            item[extractor.name] = values[i]
+                        else:
+                            item[extractor.name] = None
+                    results.append(item)
+            return results
+
+        # 嵌套結構：原有的父子層級列表提取模式
         # 找到第一個 multiple 提取器作為列表基準
         main_extractor = None
         for ext in self.skill.extractors:
@@ -352,7 +385,7 @@ def generate_skill_from_execution(
             transform=ext_data.get("transform"),
             regex=ext_data.get("regex"),
             attribute=ext_data.get("attribute"),
-            multiple=ext_data.get("multiple", False)
+            multiple=ext_data.get("multiple", True)
         ))
 
     # 構建執行配置

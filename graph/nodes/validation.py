@@ -18,6 +18,7 @@ async def validate_input(state: AgentState) -> AgentState:
     回傳:
         更新後的 Agent 狀態
     """
+    state['current_step'] = 1
     harness = AgentFactory.create(AgentType.HARNESS, "harness_main")
     return await harness.validate_input(state)
 
@@ -34,6 +35,7 @@ async def check_url_access(state: AgentState) -> AgentState:
     回傳:
         更新後的 Agent 狀態
     """
+    state['current_step'] = 2
     harness = AgentFactory.create(AgentType.HARNESS, "harness_main")
     return await harness.check_url_access(state)
 
@@ -49,5 +51,6 @@ async def reject_task(state: AgentState) -> AgentState:
     回傳:
         更新後的 Agent 狀態
     """
+    state['current_step'] = state['total_steps']
     harness = AgentFactory.create(AgentType.HARNESS, "harness_main")
     return await harness.reject_task(state)

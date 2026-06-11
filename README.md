@@ -12,6 +12,69 @@
 - **即時 WebSocket 通訊**：任務執行狀態即時推送給前端使用者
 - **會話臨時記憶**：使用 sessionId 管理任務狀態，無需用戶帳號
 
+## 快速開始 (Quick Start)
+
+只需以下幾個簡單步驟，即可在本地端部署並運行 Memento-Skills 爬蟲 Agent：
+
+### 1. 建立並啟用虛擬環境
+在專案根目錄下執行以下指令：
+```bash
+# 建立虛擬環境
+python3 -m venv venv
+
+# 啟用虛擬環境 (macOS / Linux)
+source venv/bin/activate
+
+# 啟用虛擬環境 (Windows)
+# venv\Scripts\activate
+```
+
+### 2. 安裝依賴套件
+```bash
+pip install -r requirements.txt
+```
+
+### 3. 設定環境變數
+在專案根目錄下建立一個 `.env` 檔案，並依據您要使用的 LLM 選擇以下其中一種設定方式：
+
+> [!NOTE]
+> 專案支援 **OpenAI** 與 **Ollama (本地端)**。
+
+#### 選項 A：使用 OpenAI API (推薦)
+```env
+LLM_PROVIDER=openai
+LLM_API_KEY=your_openai_api_key_here
+LLM_MODEL=gpt-4o  # 或 gpt-4
+```
+
+#### 選項 B：使用本地端 Ollama
+```env
+LLM_PROVIDER=ollama
+LLM_API_KEY=ollama  # 填寫任意非空值
+LLM_MODEL=llama3    # 您的本地模型名稱 (例如 llama3, gemma2, qwen2.5 等)
+LLM_BASE_URL=http://localhost:11434/v1
+```
+
+### 4. 初始化資料庫
+專案使用 SQLite 與 Alembic 進行資料庫管理。在首次執行前，請執行資料庫遷移以建立資料表結構：
+```bash
+PYTHONPATH=. alembic upgrade head
+```
+
+### 5. 啟動服務
+#### 方式一：Web 介面模式 (推薦)
+```bash
+python main.py
+```
+啟動後，使用瀏覽器打開 [http://localhost:8000](http://localhost:8000)，即可在網頁端輸入 URL 與爬蟲指令，並透過 WebSocket 即時查看 Agent 的執行日誌與狀態更新！
+
+#### 方式二：CLI 命令列模式
+```bash
+python main.py cli
+```
+
+---
+
 ## 系統架構
 
 ```
@@ -62,7 +125,7 @@
 | F15     | 技能持久化到檔案系統                        | UC6     |
 | F16     | 提示詞配置檔案管理                         | UC4     |
 
-## 三個設計模式
+## 核心設計模式
 
 ### 1. 策略模式 (Strategy Pattern)
 
@@ -201,6 +264,30 @@ BaseSkillLoader.load_all(directory)
                 ├── _parse_content()   # 解析內容
                 ├── _build_skill()     # 構建對象
                 └── _validate_skill()  # 驗證技能
+```
+
+### 5. 簡單工廠與轉接器模式 (Factory & Adapter Patterns)
+
+**檔案位置**：`utils/llm.py`
+
+此模式用於支援多種 LLM 提供者（如 OpenAI API 與本地端 Ollama）。藉由工廠模式來決定應生產哪一個 LLM 轉接器，再透過轉接器模式為不同的 LLM 服務提供統一的呼叫介面。
+
+```python
+# 統一轉接器介面
+class LLMAdapter(ABC):
+    @abstractmethod
+    async def generate(self, system_prompt: str, user_prompt: str) -> str:
+        pass
+
+# 具體轉接器實作
+class OpenAIAdapter(LLMAdapter): # 呼叫 OpenAI
+class OllamaAdapter(LLMAdapter): # 呼叫 Ollama 本地端 (透過 OpenAI 相容端點)
+
+# 簡單工廠
+class LLMFactory:
+    @staticmethod
+    def get_adapter(provider: str) -> Optional[LLMAdapter]:
+        # 依據 settings.LLM_PROVIDER 動態創建轉接器
 ```
 
 ## 專案結構
@@ -633,11 +720,38 @@ pip install -r requirements.txt
 建立 `.env` 檔案：
 
 ```env
-LLM_API_KEY=your_api_key_here
-LLM_MODEL=gpt-4
+# LLM 設定 (openai 或 ollama)
+LLM_PROVIDER=openai
+LLM_API_KEY=your_api_key_here     # 若使用 ollama 可填寫任意值（例如 ollama）
+LLM_MODEL=gpt-4                   # 若使用 ollama 請填寫本地模型名稱，例如 llama3
+LLM_BASE_URL=                     # 若使用 ollama 請填寫 http://localhost:11434/v1
 ```
 
-### 3. 提示詞配置
+### 3. 資料庫初始化與遷移 (Migrations)
+
+本專案使用 SQLite 資料庫與 Alembic 進行資料庫版本遷移管理。在首次啟動專案前，必須初始化資料庫並執行 migration：
+
+```bash
+# 執行 Alembic 資料庫遷移，建立必要的資料表結構
+PYTHONPATH=. ./venv/bin/alembic upgrade head
+```
+
+#### 資料庫常用指令
+
+- **建立新的遷移腳本**（當修改了 `database/models.py` 的模型結構時）：
+  ```bash
+  PYTHONPATH=. ./venv/bin/alembic revision --autogenerate -m "您的修改說明"
+  ```
+- **手動套用遷移**：
+  ```bash
+  PYTHONPATH=. ./venv/bin/alembic upgrade head
+  ```
+- **查看遷移紀錄**：
+  ```bash
+  PYTHONPATH=. ./venv/bin/alembic history --verbose
+  ```
+
+### 4. 提示詞配置
 
 提示詞配置檔案為 `prompts.yml`，包含以下提示詞模板：
 
@@ -651,7 +765,7 @@ LLM_MODEL=gpt-4
 
 可根據需求修改提示詞內容，無需更改程式碼。
 
-### 4. 執行程式
+### 5. 執行程式
 
 #### Web 模式（預設）
 
@@ -782,6 +896,32 @@ async function runCrawler() {
 重試次數: 0
 ```
 
+## 單元測試與覆蓋率
+
+本專案使用 `pytest` 進行單元測試，並使用 `pytest-cov` 分析測試覆蓋率。測試範疇涵蓋了專案中實作的五大設計模式（策略模式、觀察者模式、工廠模式、模板方法模式、轉接器模式）、會話管理器、LangGraph 工作流引擎（與節點）、社區技能執行器、以及瀏覽器、LLM（工廠與適配器）和提示詞載入工具。
+
+目前專案中所有核心模組（包含 `skills`、`observers`、`agents`、`api`、`graph`、`utils`）已達到 **100% 語句覆蓋率 (Statement Coverage)**。
+
+### 1. 執行單元測試
+
+執行全部的單元測試：
+```bash
+# 啟動虛擬環境
+source path/to/venv/bin/activate
+
+# 執行測試（需要設定 PYTHONPATH=. 以便正確載入模組）
+PYTHONPATH=. pytest -v
+```
+
+### 2. 檢視測試覆蓋率
+
+產生全專案核心模組的覆蓋率報告：
+```bash
+PYTHONPATH=. pytest --cov=skills --cov=observers --cov=agents --cov=api --cov=graph --cov=utils --cov-report=term-missing
+```
+
+---
+
 ## 技術堆疊
 
 - **LangGraph**: 工作流引擎
@@ -793,15 +933,29 @@ async function runCrawler() {
 - **PyYAML**: 提示詞配置解析
 - **HTTPX**: 非同步 HTTP 客戶端
 - **Python Async**: 非同步執行
+- **SQLite / SQLAlchemy**: 資料庫儲存與 ORM 映射
+- **Alembic**: 資料庫遷移與版本管理
 
 ## 版本
+
+### v1.2.0 (2026-06-10)
+
+- **導入 SQLite 資料庫**：新增技能持久化儲存，不只寫入檔案系統，也寫入 SQLite 資料庫中。
+- **資料庫版本遷移控制**：引入 Alembic 進行資料庫結構遷移管理。
+- **記憶庫重構**：更新 `SkillMemory` 以便從資料庫載入技能與更新技能。
+- **新增單元測試**：增加 `test_database.py` 測試套件，涵蓋 100% 資料庫運作測試。
+
+### v1.1.0 (2026-06-09)
+
+- 重構 LLM 載入邏輯：導入**簡單工廠模式**與**適配器模式 (Adapter Pattern)**，同時支援 OpenAI API 與本地端 Ollama（使用相容端點）。
+- 更新單元測試：增加對 Factory 與 Adapter 的測試，維持 `utils` 模組 **100% 語句覆蓋率**。
 
 ### v1.0.0 (2026-06-08)
 
 初始版本，包含完整功能：
 
 - LangGraph 工作流引擎
-- 三個設計模式（策略、觀察者、工廠）
+- 設計模式實作（策略、觀察者、工廠、模板）
 - 結構化技能系統（SKILL.md 格式）
 - 技能記憶庫（支援兩種格式）
 - FastAPI + WebSocket 即時通訊

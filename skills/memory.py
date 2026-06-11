@@ -47,8 +47,24 @@ class SkillMemory:
 
     def _load_all_skills(self):
         """載入所有技能"""
-        self._load_community_skills()
         self._load_auto_skills()
+        self._load_db_skills()
+
+    def _load_db_skills(self):
+        """從資料庫載入技能"""
+        try:
+            from database.connection import SessionLocal
+            from database.models import DBSkill
+            db = SessionLocal()
+            try:
+                db_skills = db.query(DBSkill).all()
+                for db_skill in db_skills:
+                    skill = db_skill.to_pydantic()
+                    self._community_skills[skill.id] = skill
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"載入資料庫技能失敗: {e}")
 
     def _load_community_skills(self):
         """載入結構化技能"""
@@ -125,7 +141,31 @@ class SkillMemory:
             skill: 技能實例
         """
         self._community_skills[skill.id] = skill
-        self._save_community_skill(skill)
+        self._save_skill_to_db(skill)
+
+    def _save_skill_to_db(self, skill: CommunitySkill):
+        """將技能儲存至 SQLite 資料庫"""
+        try:
+            from database.connection import SessionLocal
+            from database.models import DBSkill
+            db = SessionLocal()
+            try:
+                db_skill = db.query(DBSkill).filter(DBSkill.id == skill.id).first()
+                if db_skill:
+                    # 更新現有欄位
+                    new_db_skill = DBSkill.from_pydantic(skill)
+                    for column in DBSkill.__table__.columns:
+                        name = column.name
+                        if name not in ['created_at']:
+                            setattr(db_skill, name, getattr(new_db_skill, name))
+                else:
+                    db_skill = DBSkill.from_pydantic(skill)
+                    db.add(db_skill)
+                db.commit()
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"儲存技能到資料庫失敗: {e}")
 
     def _save_community_skill(self, skill: CommunitySkill):
         """
@@ -217,7 +257,7 @@ class SkillMemory:
             skill.version = ".".join(version_parts)
 
             self._community_skills[skill.id] = skill
-            self._save_community_skill(skill)
+            self._save_skill_to_db(skill)
 
     def update_auto_skill(self, skill_data: Dict) -> None:
         """
@@ -292,6 +332,7 @@ class SkillMemory:
         回傳:
             是否刪除成功
         """
+        deleted = False
         # 先嘗試刪除結構化技能
         if skill_id in self._community_skills:
             del self._community_skills[skill_id]
@@ -299,7 +340,23 @@ class SkillMemory:
             if skill_dir.exists():
                 import shutil
                 shutil.rmtree(skill_dir)
-            return True
+            deleted = True
+
+        # 嘗試從資料庫刪除
+        try:
+            from database.connection import SessionLocal
+            from database.models import DBSkill
+            db = SessionLocal()
+            try:
+                db_skill = db.query(DBSkill).filter(DBSkill.id == skill_id).first()
+                if db_skill:
+                    db.delete(db_skill)
+                    db.commit()
+                    deleted = True
+            finally:
+                db.close()
+        except Exception as e:
+            print(f"從資料庫刪除技能失敗: {e}")
 
         # 再嘗試刪除自動生成技能
         if skill_id in self._auto_skills:
@@ -307,9 +364,9 @@ class SkillMemory:
             file_path = self._auto_dir / f"{skill_id}.json"
             if file_path.exists():
                 file_path.unlink()
-            return True
+            deleted = True
 
-        return False
+        return deleted
 
     @classmethod
     def reset(cls) -> None:

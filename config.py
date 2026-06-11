@@ -19,8 +19,10 @@ class Settings(BaseSettings):
     DEBUG: bool = True                            # 除錯模式
 
     # LLM 服務配置
+    LLM_PROVIDER: str = "openai"       # 使用的 LLM 提供者 (openai, ollama)
     LLM_API_KEY: Optional[str] = None  # LLM API 金鑰
     LLM_MODEL: str = "gpt-4"           # 使用的 LLM 模型
+    LLM_BASE_URL: Optional[str] = None # LLM API 基礎網址 (例如 Ollama 使用 http://localhost:11434/v1)
 
     # 爬蟲參數配置
     MAX_RETRY_COUNT: int = 20           # 最大重試次數
@@ -32,6 +34,9 @@ class Settings(BaseSettings):
 
     # 提示詞配置
     PROMPTS_FILE: str = "prompts.yml"     # 提示詞配置檔案路徑
+
+    # 資料庫配置
+    DATABASE_URL: str = "sqlite:///memento_crawler.db" # SQLite 資料庫連線網址
 
     class Config:
         """Pydantic 配置"""

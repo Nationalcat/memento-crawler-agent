@@ -190,7 +190,8 @@ class ExecutorAgent(BaseAgent):
                 strategy = await llm_manager.analyze_webpage(
                     url=state['url'],
                     instruction=state['instruction'],
-                    content=page_content
+                    content=page_content,
+                    state=state
                 )
 
                 # 確保策略包含必要字段
@@ -268,8 +269,44 @@ class ExecutorAgent(BaseAgent):
         回傳:
             提取的資料列表
         """
-        # 示範：返回模擬資料
-        return [{"selector_based": True, "content": content[:100]}]
+        from bs4 import BeautifulSoup
+        from urllib.parse import urljoin
+        
+        soup = BeautifulSoup(content, 'html.parser')
+        results = []
+        
+        extracted_fields = {}
+        max_len = 0
+        for name, selector in selectors.items():
+            if not selector:
+                continue
+            elements = soup.select(selector)
+            values = []
+            for el in elements:
+                if el.name == 'img':
+                    val = el.get('src') or el.get('data-src') or el.get_text(strip=True)
+                elif el.name == 'a':
+                    val = el.get('href') or el.get_text(strip=True)
+                    if val and isinstance(val, str) and not val.startswith('http'):
+                        val = urljoin(state['url'], val)
+                else:
+                    val = el.get_text(strip=True)
+                if val:
+                    values.append(val)
+            extracted_fields[name] = values
+            max_len = max(max_len, len(values))
+            
+        if max_len > 0:
+            for i in range(max_len):
+                item = {}
+                for name, values in extracted_fields.items():
+                    if i < len(values):
+                        item[name] = values[i]
+                    else:
+                        item[name] = None
+                results.append(item)
+                
+        return results
 
     async def _extract_with_strategy(self, content: str, strategy: Dict, state: AgentState) -> list:
         """
@@ -281,12 +318,51 @@ class ExecutorAgent(BaseAgent):
         回傳:
             提取的資料列表
         """
-        # 示範：返回模擬資料
+        from bs4 import BeautifulSoup
+        from urllib.parse import urljoin
+        
+        soup = BeautifulSoup(content, 'html.parser')
         fields = strategy.get('fields', [])
-        result = {}
+        results = []
+        
+        extracted_fields = {}
+        max_len = 0
         for field in fields:
-            result[field['name']] = f"模擬_{field['name']}_資料"
-        return [result]
+            name = field.get('name')
+            selector = field.get('selector')
+            field_type = field.get('type', 'text')
+            
+            if not name or not selector:
+                continue
+                
+            elements = soup.select(selector)
+            values = []
+            for el in elements:
+                if field_type == 'image' or field_type == '圖片':
+                    val = el.get('src') or el.get('data-src') or el.get_text(strip=True)
+                elif field_type == 'link' or field_type == '連結':
+                    val = el.get('href') or el.get_text(strip=True)
+                    if val and isinstance(val, str) and not val.startswith('http'):
+                        val = urljoin(state['url'], val)
+                else:
+                    val = el.get_text(strip=True)
+                if val:
+                    values.append(val)
+            
+            extracted_fields[name] = values
+            max_len = max(max_len, len(values))
+            
+        if max_len > 0:
+            for i in range(max_len):
+                item = {}
+                for name, values in extracted_fields.items():
+                    if i < len(values):
+                        item[name] = values[i]
+                    else:
+                        item[name] = None
+                results.append(item)
+            
+        return results
 
     async def save_skill_from_execution(self, state: AgentState) -> None:
         """

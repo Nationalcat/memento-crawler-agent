@@ -59,3 +59,7 @@ class AgentState(TypedDict):
     current_strategy: Optional[Dict]      # 當前執行策略
     original_strategy: Optional[Dict]     # 原始執行策略（用於錯誤分析）
     reject_reason: Optional[str]          # 拒絕原因（若被拒絕）
+
+    # 提示詞記錄（新增）
+    prompts: List[Dict[str, Any]]         # 執行過程中所調用的 LLM 提示詞與回覆記錄
+

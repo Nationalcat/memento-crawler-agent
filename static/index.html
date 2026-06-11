@@ -218,6 +218,45 @@
             color: #f39c12;
         }
 
+        .log-prompt-title {
+            color: #b388ff;
+            font-weight: bold;
+            display: inline-block;
+        }
+
+        .prompt-details {
+            margin-top: 5px;
+            background: rgba(179, 136, 255, 0.05);
+            border-left: 3px solid #b388ff;
+            border-radius: 0 4px 4px 0;
+            padding: 8px 12px;
+        }
+
+        .prompt-block {
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .prompt-block strong {
+            color: #64ffda;
+            display: block;
+            margin-top: 8px;
+            margin-bottom: 3px;
+        }
+
+        .prompt-block pre {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #e0e0e0;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+
         .session-info {
             background: rgba(100, 255, 218, 0.1);
             border: 1px solid rgba(100, 255, 218, 0.3);
@@ -555,6 +594,77 @@
                 addLog('重試', data.retry_progress, 'retry');
                 retryCount++;
                 updateStats();
+            }
+
+            // 顯示新產生的錯誤
+            if (data.new_errors && data.new_errors.length > 0) {
+                data.new_errors.forEach(err => {
+                    addLog('錯誤', err, 'error');
+                });
+            }
+
+            // 顯示新產生的提示詞
+            if (data.new_prompts && data.new_prompts.length > 0) {
+                data.new_prompts.forEach(p => {
+                    const typeMap = {
+                        'analyze_webpage': '網頁結構分析',
+                        'analyze_error': '錯誤原因分析',
+                        'clean_data': '資料清洗',
+                        'generate_skill': '生成爬蟲技能'
+                    };
+                    const typeText = typeMap[p.type] || p.type;
+                    const logContainer = document.getElementById('logContainer');
+                    const time = new Date(p.timestamp || Date.now()).toLocaleTimeString();
+
+                    const entry = document.createElement('div');
+                    entry.className = 'log-entry';
+
+                    const escapeHtml = (unsafe) => {
+                        if (!unsafe) return '';
+                        return unsafe
+                            .replace(/&/g, "&amp;")
+                            .replace(/</g, "&lt;")
+                            .replace(/>/g, "&gt;")
+                            .replace(/"/g, "&quot;")
+                            .replace(/'/g, "&#039;");
+                    };
+
+                    const systemEscaped = escapeHtml(p.system);
+                    const userEscaped = escapeHtml(p.user);
+                    const responseEscaped = escapeHtml(p.response);
+
+                    entry.innerHTML = `
+                        <span class="log-time">[${time}]</span>
+                        <span class="log-prompt-title">[提示詞] ${typeText} (點擊展開)</span>
+                        <div class="prompt-details" style="display: none;">
+                            <div class="prompt-block">
+                                <strong>System Prompt:</strong>
+                                <pre>${systemEscaped}</pre>
+                                <strong>User Prompt:</strong>
+                                <pre>${userEscaped}</pre>
+                                <strong>LLM Response:</strong>
+                                <pre>${responseEscaped}</pre>
+                            </div>
+                        </div>
+                    `;
+
+                    const titleEl = entry.querySelector('.log-prompt-title');
+                    const detailsEl = entry.querySelector('.prompt-details');
+                    titleEl.style.cursor = 'pointer';
+                    titleEl.style.textDecoration = 'underline';
+                    titleEl.addEventListener('click', () => {
+                        if (detailsEl.style.display === 'none') {
+                            detailsEl.style.display = 'block';
+                            titleEl.textContent = `[提示詞] ${typeText} (點擊收合)`;
+                        } else {
+                            detailsEl.style.display = 'none';
+                            titleEl.textContent = `[提示詞] ${typeText} (點擊展開)`;
+                        }
+                    });
+
+                    logContainer.appendChild(entry);
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                });
             }
         }
 

@@ -19,6 +19,7 @@ async def execute_with_skill(state: AgentState) -> AgentState:
     回傳:
         更新後的 Agent 狀態
     """
+    state['current_step'] = 4
     executor = AgentFactory.create(AgentType.EXECUTOR, "executor_main")
     return await executor.execute_with_skill(state)
 
@@ -35,6 +36,7 @@ async def execute_auto(state: AgentState) -> AgentState:
     回傳:
         更新後的 Agent 狀態
     """
+    state['current_step'] = 4
     executor = AgentFactory.create(AgentType.EXECUTOR, "executor_main")
     return await executor.execute_auto(state)
 
@@ -53,6 +55,7 @@ async def handle_error(state: AgentState) -> AgentState:
     回傳:
         更新後的 Agent 狀態
     """
+    state['current_step'] = 5
     harness = AgentFactory.create(AgentType.HARNESS, "harness_main")
     return await harness.handle_error_with_llm(state)
 
@@ -68,6 +71,7 @@ async def parse_data(state: AgentState) -> AgentState:
     回傳:
         更新後的 Agent 狀態
     """
+    state['current_step'] = 6
     state['status'] = TaskStatus.EXTRACTING
 
     # 如果有提取的數據，進行清洗
@@ -82,7 +86,8 @@ async def parse_data(state: AgentState) -> AgentState:
             # 調用 LLM 進行數據清洗
             cleaned_data = await llm_manager.clean_data(
                 instruction=state['instruction'],
-                raw_data=raw_data
+                raw_data=raw_data,
+                state=state
             )
 
             # 如果 LLM 返回的是列表，直接使用

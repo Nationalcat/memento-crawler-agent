@@ -177,7 +177,8 @@ class CrawlerWorkflow:
             "metadata": {},
             "current_strategy": None,
             "original_strategy": None,
-            "reject_reason": None
+            "reject_reason": None,
+            "prompts": []
         }
 
         return await self.graph.ainvoke(initial_state)

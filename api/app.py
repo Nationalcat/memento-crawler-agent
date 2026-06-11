@@ -44,6 +44,8 @@ class WebSocketObserver(Observer):
             session_id: 關聯的會話 ID
         """
         self.session_id = session_id
+        self._sent_prompts_count = 0
+        self._sent_errors_count = 0
 
     async def update(self, state: AgentState) -> None:
         """
@@ -64,6 +66,20 @@ class WebSocketObserver(Observer):
             "error_count": len(state.get("error_log", [])),
             "timestamp": datetime.now().isoformat()
         }
+
+        # 獲取新產生的錯誤並推送
+        error_log = state.get("error_log", [])
+        if len(error_log) > self._sent_errors_count:
+            new_errors = error_log[self._sent_errors_count:]
+            message["new_errors"] = new_errors
+            self._sent_errors_count = len(error_log)
+
+        # 獲取新產生的提示詞並推送
+        prompts = state.get("prompts", [])
+        if len(prompts) > self._sent_prompts_count:
+            new_prompts = prompts[self._sent_prompts_count:]
+            message["new_prompts"] = new_prompts
+            self._sent_prompts_count = len(prompts)
 
         # 推送重試進度
         retry_progress = state.get("metadata", {}).get("retry_progress")
@@ -314,8 +330,18 @@ async def handle_cancel_task(session_id: str):
 
 @app.get("/api/stats")
 async def get_stats():
-    """獲取系統統計資訊"""
+    """獲取系統統計資訊與所有會話詳情"""
+    sessions_details = {}
+    for sid, session in session_manager._sessions.items():
+        sessions_details[sid] = {
+            "is_connected": session.is_connected,
+            "created_at": session.created_at.isoformat(),
+            "last_active": session.last_active.isoformat(),
+            "current_state": session.current_state,
+            "task_history": session.task_history
+        }
     return {
         "active_sessions": session_manager.get_active_sessions_count(),
+        "sessions": sessions_details,
         "server_time": datetime.now().isoformat()
     }

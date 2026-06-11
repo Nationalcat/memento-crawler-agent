@@ -86,20 +86,27 @@ class YamlSkillLoader(BaseSkillLoader):
             script_path=script_path
         )
 
-    def _parse_target(self, data: Dict) -> TargetConfig:
+    def _parse_target(self, data: Optional[Dict]) -> TargetConfig:
         """解析目標配置"""
+        if not data:
+            return TargetConfig(domain="")
         return TargetConfig(
             domain=data.get("domain", ""),
-            url_patterns=data.get("url_patterns", [])
+            url_patterns=data.get("url_patterns") or []
         )
 
-    def _parse_parameters(self, data: List[Dict]) -> List[Parameter]:
+    def _parse_parameters(self, data: Optional[List[Dict]]) -> List[Parameter]:
         """解析參數列表"""
-        return [Parameter(**p) for p in data]
+        if not data:
+            return []
+        return [Parameter(**p) for p in data if p is not None]
 
-    def _parse_execution(self, data: Dict) -> ExecutionConfig:
+    def _parse_execution(self, data: Optional[Dict]) -> ExecutionConfig:
         """解析執行配置"""
-        actions = [CrawlAction(**a) for a in data.get("actions", [])]
+        if not data:
+            return ExecutionConfig()
+        raw_actions = data.get("actions") or []
+        actions = [CrawlAction(**a) for a in raw_actions if a is not None]
         return ExecutionConfig(
             wait_time=data.get("wait_time", 2),
             scroll=data.get("scroll", False),
@@ -107,12 +114,16 @@ class YamlSkillLoader(BaseSkillLoader):
             actions=actions
         )
 
-    def _parse_extractors(self, data: List[Dict]) -> List[Extractor]:
+    def _parse_extractors(self, data: Optional[List[Dict]]) -> List[Extractor]:
         """解析提取器（支援嵌套）"""
+        if not data:
+            return []
         extractors = []
         for ext_data in data:
+            if not ext_data:
+                continue
             children = None
-            if "children" in ext_data:
+            if "children" in ext_data and ext_data["children"] is not None:
                 children = self._parse_extractors(ext_data["children"])
 
             extractors.append(Extractor(
@@ -128,9 +139,11 @@ class YamlSkillLoader(BaseSkillLoader):
             ))
         return extractors
 
-    def _parse_output(self, data: Dict) -> OutputConfig:
+    def _parse_output(self, data: Optional[Dict]) -> OutputConfig:
         """解析輸出配置"""
+        if not data:
+            return OutputConfig()
         return OutputConfig(
             format=data.get("format", "json"),
-            output_schema=data.get("schema", {})
+            output_schema=data.get("schema") or {}
         )
